@@ -61,7 +61,7 @@ fun ResourcesScreen(
         )
 
         Button(onClick = { text = "Hello, ${getPlatformName()}" }) {
-            Text(text = stringResource(MR.strings.hello_world))
+            Text(text = stringResource(MR.strings.toto))
         }
 
         val fileContent: String? by MR.files.some_file.readTextAsState()

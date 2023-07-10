@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<resources>
+    <plural name="chars_count">
+        <item quantity="zero">%d articles</item>
+        <item quantity="one">%d article</item>
+        <item quantity="few">%d articles</item>
+        <item quantity="many">%d articles</item>
+        <item quantity="other">%d articles</item>
+    </plural>
+</resources>

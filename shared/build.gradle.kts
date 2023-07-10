@@ -1,9 +1,14 @@
+import java.util.Properties
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     kotlin("multiplatform")
     kotlin("native.cocoapods")
-    id("com.android.library")
-    id("org.jetbrains.compose")
-    id("dev.icerock.mobile.multiplatform-resources")
+    alias(libs.plugins.library)
+    alias(libs.plugins.compose)
+    alias(libs.plugins.konfig)
+    alias(libs.plugins.mokoResources)
 }
 
 kotlin {
@@ -28,13 +33,6 @@ kotlin {
     }
 
     sourceSets {
-        val mokoResourcesVersion = extra["moko.resources.version"] as String
-        val mokoMvvmVersion = extra["moko.mvvm.version"] as String
-        val mokoPermissionsVersion = extra["moko.permissions.version"] as String
-        val mokoMediaVersion = extra["moko.media.version"] as String
-        val mokoBiometryVersion = extra["moko.biometry.version"] as String
-        val mokoGeoVersion = extra["moko.geo.version"] as String
-
         val commonMain by getting {
             dependencies {
                 implementation(compose.runtime)
@@ -43,17 +41,39 @@ kotlin {
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
 
-                implementation("dev.icerock.moko:resources-compose:$mokoResourcesVersion")
+                // Moko libs
+                implementation(libs.moko.resources.compose)
+                implementation(libs.moko.mvvm.compose)
+                implementation(libs.moko.permissions.compose)
+                implementation(libs.moko.media.compose)
+                implementation(libs.moko.biometry.compose)
+                implementation(libs.moko.geo.compose)
 
-                implementation("dev.icerock.moko:mvvm-compose:$mokoMvvmVersion")
+                // Icons
+                api(compose.materialIconsExtended)
 
-                implementation("dev.icerock.moko:permissions-compose:$mokoPermissionsVersion")
+                // Ktor
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.logging)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.ktor.client.content.negotiation)
 
-                implementation("dev.icerock.moko:media-compose:$mokoMediaVersion")
+                // Koin
+                implementation(libs.koin.core)
 
-                implementation("dev.icerock.moko:biometry-compose:$mokoBiometryVersion")
+                // Serialization
+                implementation(libs.kotlinx.serialization.json)
 
-                implementation("dev.icerock.moko:geo-compose:$mokoGeoVersion")
+                // Image Loader
+                api(libs.image.loader)
+
+                // precompose - for viewmodel and navigation
+                api(libs.precompose)
+                api(libs.precompose.viewmodel)
+
+                // SQLDelight
+                implementation(libs.sqldelight.runtime)
+                implementation(libs.sqldelight.coroutines.extensions)
 
                 // fix of Could not find "shared/build/kotlinTransformedMetadataLibraries/commonMain/org.jetbrains.kotlinx-atomicfu-0.17.3-nativeInterop-8G5yng.klib"
                 implementation("org.jetbrains.kotlinx:atomicfu:0.17.3")
@@ -61,9 +81,15 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
-                api("androidx.activity:activity-compose:1.6.1")
-                api("androidx.appcompat:appcompat:1.6.1")
-                api("androidx.core:core-ktx:1.9.0")
+                api(libs.activity.compose)
+                api(libs.appcompat)
+                api(libs.core.ktx)
+
+                api(libs.koin.android)
+                implementation(libs.ktor.okhttp)
+
+                implementation(libs.ktor.client.android)
+                implementation(libs.android.driver)
             }
         }
         val iosX64Main by getting
@@ -74,12 +100,54 @@ kotlin {
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
+
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+                implementation(libs.native.driver)
+            }
         }
+    }
+}
+
+// generateMRcommonMain
+tasks.register("generateMRcommonMainTask") {
+    doLast {
+        exec {
+            workingDir = project.rootDir
+            commandLine = listOf(
+                "./gradlew",
+                "generateMRcommonMain",
+                "&&",
+                "./gradlew",
+                "generateBuildKonfig"
+            )
+        }
+    }
+}
+
+gradle.projectsEvaluated {
+    tasks.named("preBuild") {
+        dependsOn("generateMRcommonMainTask")
     }
 }
 
 multiplatformResources {
     multiplatformResourcesPackage = "com.myapplication.common"
+}
+
+buildkonfig {
+    packageName = "com.myapplication"
+
+    val properties = Properties()
+
+    val localPropertiesFile = project.rootProject.file("local.properties")
+    if(localPropertiesFile.exists()){
+        localPropertiesFile.inputStream().use { properties.load(it) }
+    }
+
+    defaultConfigs {
+        buildConfigField(STRING, "BASE_URL", properties.getProperty("BASE_URL"))
+    }
 }
 
 android {
